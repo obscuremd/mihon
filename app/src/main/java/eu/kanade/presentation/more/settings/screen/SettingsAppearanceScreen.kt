@@ -2,20 +2,27 @@ package eu.kanade.presentation.more.settings.screen
 
 import android.app.Activity
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.domain.ui.UiPreferences
+import eu.kanade.domain.ui.model.DisplaySize
 import eu.kanade.domain.ui.model.TabletUiMode
 import eu.kanade.domain.ui.model.ThemeMode
 import eu.kanade.domain.ui.model.TimeFormat
 import eu.kanade.domain.ui.model.setAppCompatDelegateThemeMode
+import eu.kanade.presentation.components.NeonTabRow
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.presentation.more.settings.screen.appearance.AppLanguageScreen
 import eu.kanade.presentation.more.settings.widget.AppThemeModePreferenceWidget
@@ -83,6 +90,32 @@ object SettingsAppearanceScreen : SearchableSettings {
                             amoled = amoled,
                             onItemClick = { appThemePref.set(it) },
                         )
+                    }
+                },
+                Preference.PreferenceItem.CustomPreference(
+                    title = stringResource(MR.strings.pref_display_size),
+                ) {
+                    val displaySizePref = uiPreferences.displaySize
+                    val displaySize by displaySizePref.collectAsState()
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        Text(
+                            text = stringResource(MR.strings.pref_display_size),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                        )
+                        Text(
+                            text = stringResource(MR.strings.pref_display_size_summary),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                        )
+                        NeonTabRow(
+                            selectedTabIndex = displaySize.ordinal,
+                            tabCount = DisplaySize.entries.size,
+                            onTabClick = { displaySizePref.set(DisplaySize.entries[it]) },
+                        ) { index, _ ->
+                            Text(DisplaySize.entries[index].label)
+                        }
                     }
                 },
                 Preference.PreferenceItem.SwitchPreference(

@@ -43,6 +43,8 @@ import eu.kanade.presentation.browse.components.ExtensionIcon
 import eu.kanade.presentation.browse.components.ExtensionPill
 import eu.kanade.presentation.browse.components.label
 import eu.kanade.presentation.components.WarningBanner
+import eu.kanade.presentation.components.neon.NeonButton
+import eu.kanade.presentation.components.neon.NeonIconButton
 import eu.kanade.presentation.more.settings.screen.browse.ExtensionStoresScreen
 import eu.kanade.presentation.util.rememberRequestPackageInstallsPermissionState
 import eu.kanade.tachiyomi.extension.model.Extension
@@ -178,14 +180,10 @@ private fun ExtensionContent(
                         val action: @Composable RowScope.() -> Unit =
                             if (header.textRes == MR.strings.ext_updates_pending) {
                                 {
-                                    Button(onClick = { onClickUpdateAll() }) {
-                                        Text(
-                                            text = stringResource(MR.strings.ext_update_all),
-                                            style = LocalTextStyle.current.copy(
-                                                color = MaterialTheme.colorScheme.onPrimary,
-                                            ),
-                                        )
-                                    }
+                                    NeonButton(
+                                        text = stringResource(MR.strings.ext_update_all),
+                                        onClick = { onClickUpdateAll() },
+                                    )
                                 }
                             } else {
                                 {}
@@ -466,12 +464,11 @@ private fun ExtensionItemActions(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (!installStep.isCompleted()) {
-            IconButton(onClick = { onClickItemCancel(extension) }) {
-                Icon(
-                    imageVector = MaterialSymbols.Rounded.Close,
-                    contentDescription = stringResource(MR.strings.action_cancel),
-                )
-            }
+            NeonIconButton(
+                icon = MaterialSymbols.Rounded.Close,
+                contentDescription = stringResource(MR.strings.action_cancel),
+                onClick = { onClickItemCancel(extension) },
+            )
             return@Row
         }
 
@@ -488,9 +485,11 @@ private fun ExtensionItemActions(
             }
         }
         secondaryAction?.let { (icon, label) ->
-            IconButton(onClick = { onClickItemSecondaryAction(extension) }) {
-                Icon(imageVector = icon, contentDescription = stringResource(label))
-            }
+            NeonIconButton(
+                icon = icon,
+                contentDescription = stringResource(label),
+                onClick = { onClickItemSecondaryAction(extension) },
+            )
         }
 
         val action = when {
@@ -502,9 +501,12 @@ private fun ExtensionItemActions(
             else -> null
         }
         action?.let { (icon, label) ->
-            IconButton(onClick = { onClickItemAction(extension) }) {
-                Icon(imageVector = icon, contentDescription = stringResource(label))
-            }
+            NeonIconButton(
+                icon = icon,
+                contentDescription = stringResource(label),
+                onClick = { onClickItemAction(extension) },
+                active = true,
+            )
         }
     }
 }

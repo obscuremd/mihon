@@ -1,23 +1,17 @@
 package eu.kanade.tachiyomi.ui.reader.viewer.book
 
-import android.graphics.BlurMaskFilter
-import android.os.Build
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
 import kotlin.math.PI
 import kotlin.math.hypot
 import kotlin.math.sin
@@ -118,23 +112,6 @@ private class Fold(corner: Offset, point: Offset) {
 }
 
 /**
- * Reusable paint for the shadow the turned part casts, blurred where the platform blurs hardware drawing.
- */
-internal class CurlPaints {
-    private var blurRadius = -1f
-    private val shadowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
-
-    fun castShadow(radius: Float, color: Color): android.graphics.Paint {
-        if (radius != blurRadius) {
-            blurRadius = radius
-            shadowPaint.maskFilter = if (radius > 0f) BlurMaskFilter(radius, BlurMaskFilter.Blur.NORMAL) else null
-        }
-        shadowPaint.color = color.toArgb()
-        return shadowPaint
-    }
-}
-
-/**
  * Draws [scene] with the leaf's corner at [corner] and the turn at [progress].
  */
 internal fun DrawScope.drawTurn(
@@ -144,7 +121,6 @@ internal fun DrawScope.drawTurn(
     progress: Float,
     paper: Color,
     shadows: Boolean,
-    paints: CurlPaints,
 ) {
     val leaf = scene.leaf
     val r = leaf.rect
@@ -203,9 +179,15 @@ internal fun DrawScope.drawTurn(
     if (flap.size < 3) return
     val flapPath = flap.toPath()
 
-    if (strength > 0f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        val paint = paints.castShadow(10f * density, Color.Black.copy(alpha = 0.4f * strength))
-        drawIntoCanvas { it.nativeCanvas.drawPath(flapPath.asAndroidPath(), paint) }
+    if (strength > 0f) {
+        // Shadow the turned part casts, as offset copies rather than a blur: blurring a path has no GPU path, which
+        // stutters on large pages
+        val away = -fold.normal
+        for ((distance, alpha) in CAST_SHADOW_LAYERS) {
+            translate(away.x * distance * density, away.y * distance * density) {
+                drawPath(flapPath, Color.Black.copy(alpha = alpha * strength))
+            }
+        }
     }
 
     clipPath(flapPath) {
@@ -315,6 +297,9 @@ private fun affine(a: Float, b: Float, c: Float, d: Float, tx: Float, ty: Float)
     values[Matrix.ScaleY] = d
     values[Matrix.TranslateY] = ty
 }
+
+/** The cast shadow's layers: how far each is offset from the flap, in dp, and how dark. */
+private val CAST_SHADOW_LAYERS = listOf(6f to 0.08f, 3f to 0.12f)
 
 /** How high a turned corner lifts mid-turn, of the leaf's height. */
 private const val CORNER_LIFT = 0.12f

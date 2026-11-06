@@ -26,10 +26,14 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
+import mihon.feature.discover.discoverTab
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 
 data object BrowseTab : Tab {
+
+    /** The Extensions page, after Discover and Sources. */
+    private const val EXTENSIONS_PAGE = 2
 
     override val options: TabOptions
         @Composable
@@ -39,7 +43,7 @@ data object BrowseTab : Tab {
             val exit = AnimatedImageVector.animatedVectorResource(R.drawable.animated_browse_exit)
             return TabOptions(
                 index = 3u,
-                title = stringResource(MR.strings.browse),
+                title = stringResource(MR.strings.label_discover),
                 icon = rememberAnimatedVectorPainter(enter, exit, isSelected),
             )
         }
@@ -63,6 +67,7 @@ data object BrowseTab : Tab {
         val extensionsSearchQuery by extensionsViewModel.searchQuery.collectAsStateWithLifecycle()
 
         val tabs = listOf(
+            discoverTab(),
             sourcesTab(),
             extensionsTab(extensionsViewModel),
             migrateSourceTab(),
@@ -71,7 +76,7 @@ data object BrowseTab : Tab {
         val state = rememberPagerState { tabs.size }
 
         TabbedScreen(
-            titleRes = MR.strings.browse,
+            titleRes = MR.strings.label_discover,
             tabs = tabs,
             state = state,
             searchQuery = extensionsSearchQuery,
@@ -79,7 +84,7 @@ data object BrowseTab : Tab {
         )
         LaunchedEffect(Unit) {
             switchToExtensionTabChannel.receiveAsFlow()
-                .collectLatest { state.scrollToPage(1) }
+                .collectLatest { state.scrollToPage(EXTENSIONS_PAGE) }
         }
 
         LaunchedEffect(Unit) {

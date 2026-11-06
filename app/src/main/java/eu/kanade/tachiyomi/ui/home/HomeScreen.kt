@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import mihon.app.di.appGraph
+import mihon.feature.home.HomeTab
 import soup.compose.material.motion.animation.materialFadeThroughIn
 import soup.compose.material.motion.animation.materialFadeThroughOut
 import tachiyomi.i18n.MR
@@ -63,11 +64,12 @@ object HomeScreen : Screen() {
     @Suppress("ConstPropertyName")
     private const val TabNavigatorKey = "HomeTabs"
 
+    // Updates opens from Home's bell, so the bar matches the Home, Discover, Library, History layout
     private val TABS = listOf(
-        LibraryTab,
-        UpdatesTab,
-        HistoryTab,
+        HomeTab,
         BrowseTab,
+        LibraryTab,
+        HistoryTab,
         MoreTab,
     )
 
@@ -75,7 +77,7 @@ object HomeScreen : Screen() {
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         TabNavigator(
-            tab = LibraryTab,
+            tab = HomeTab,
             key = TabNavigatorKey,
         ) { tabNavigator ->
             // Provide usable navigator to content screen
@@ -129,7 +131,7 @@ object HomeScreen : Screen() {
 
             val goToLibraryTab = { tabNavigator.current = LibraryTab }
 
-            BackHandler(enabled = tabNavigator.current != LibraryTab, onBack = goToLibraryTab)
+            BackHandler(enabled = tabNavigator.current != HomeTab, onBack = { tabNavigator.current = HomeTab })
 
             LaunchedEffect(Unit) {
                 launch {
@@ -140,9 +142,14 @@ object HomeScreen : Screen() {
                 }
                 launch {
                     openTabEvent.receiveAsFlow().collectLatest {
+                        if (it == Tab.Updates) {
+                            tabNavigator.current = HomeTab
+                            navigator.push(UpdatesTab)
+                            return@collectLatest
+                        }
                         tabNavigator.current = when (it) {
                             is Tab.Library -> LibraryTab
-                            Tab.Updates -> UpdatesTab
+                            Tab.Updates -> HomeTab
                             Tab.History -> HistoryTab
                             is Tab.Browse -> {
                                 if (it.toExtensions) {
@@ -208,7 +215,7 @@ object HomeScreen : Screen() {
         val count by produceState(initialValue = 0, tab) {
             val graph = context.appGraph
             when (tab) {
-                is UpdatesTab -> {
+                is HomeTab, is UpdatesTab -> {
                     combine(
                         graph.libraryPreferences.newShowUpdatesCount.changes(),
                         graph.libraryPreferences.newUpdatesCount.changes(),
@@ -230,7 +237,7 @@ object HomeScreen : Screen() {
         return {
             Badge {
                 val desc = when (tab) {
-                    is UpdatesTab -> pluralStringResource(
+                    is HomeTab, is UpdatesTab -> pluralStringResource(
                         MR.plurals.notification_chapters_generic,
                         count = count,
                         count,

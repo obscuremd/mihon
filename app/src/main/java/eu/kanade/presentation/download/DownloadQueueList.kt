@@ -1,6 +1,7 @@
 package eu.kanade.presentation.download
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.gestures.ScrollableState
@@ -44,6 +45,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.components.DropdownMenu
+import eu.kanade.presentation.theme.NeonDefaults
+import eu.kanade.presentation.theme.NeonSpacing
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.ui.download.DownloadQueueSection
@@ -313,8 +316,10 @@ private fun ReorderableCollectionItemScope.DownloadQueueItem(
     val animatedProgress by animateFloatAsState(progress?.fraction ?: 0f, label = "progress")
 
     Surface(
-        modifier = modifier,
-        color = listItemContainerColor(isDragging),
+        modifier = modifier.padding(horizontal = MaterialTheme.padding.medium, vertical = NeonSpacing.xxs),
+        shape = NeonDefaults.CardShape,
+        color = if (isDragging) listItemContainerColor(true) else MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(1.dp, if (isDragging) MaterialTheme.colorScheme.primary else NeonDefaults.hairline),
         shadowElevation = listItemElevation(isDragging),
     ) {
         Row(

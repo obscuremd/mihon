@@ -34,6 +34,8 @@ import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.manga.components.ChapterDownloadIndicator
 import eu.kanade.presentation.manga.components.DotSeparatorText
 import eu.kanade.presentation.manga.components.MangaCover
+import eu.kanade.presentation.theme.NeonSpacing
+import eu.kanade.presentation.theme.cardSurface
 import eu.kanade.presentation.util.relativeTimeSpanString
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.ui.updates.UpdatesItem
@@ -159,6 +161,8 @@ private fun UpdatesUiItem(
 
     Row(
         modifier = modifier
+            .padding(horizontal = MaterialTheme.padding.medium, vertical = NeonSpacing.xxs)
+            .cardSurface()
             .selectedBackground(selected)
             .combinedClickable(
                 onClick = onClick,
@@ -167,8 +171,8 @@ private fun UpdatesUiItem(
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 },
             )
-            .height(56.dp)
-            .padding(horizontal = MaterialTheme.padding.medium),
+            .height(72.dp)
+            .padding(horizontal = NeonSpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MangaCover.Square(

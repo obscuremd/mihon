@@ -59,6 +59,8 @@ data object UpdatesTab : Tab {
         val state by viewModel.state.collectAsStateWithLifecycle()
 
         UpdateScreen(
+            // Opened from Home, over the tabs
+            navigateUp = if (navigator.canPop) ({ navigator.pop() }) else null,
             state = state,
             snackbarHostState = viewModel.snackbarHostState,
             lastUpdated = viewModel.lastUpdated,

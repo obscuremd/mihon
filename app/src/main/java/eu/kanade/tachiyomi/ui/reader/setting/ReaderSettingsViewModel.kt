@@ -50,9 +50,15 @@ class ReaderSettingsViewModel(
     /**
      * The reading mode the viewer is made for, with the default resolved.
      */
-    val readingMode = combine(mangaFlow, preferences.defaultReadingMode.changes()) { manga, default ->
+    val readingMode = combine(
+        mangaFlow,
+        preferences.defaultReadingMode.changes(),
+        preferences.readingModeRules.changes(),
+    ) { manga, default, _ ->
         ReadingMode.fromPreference(manga?.readingMode?.toInt())
             .takeIf { it != ReadingMode.DEFAULT }
+            ?: ReadingMode.fromPreference(readerViewModel.getMangaReadingMode())
+                .takeIf { it != ReadingMode.DEFAULT }
             ?: ReadingMode.fromPreference(default)
     }
         .stateIn(

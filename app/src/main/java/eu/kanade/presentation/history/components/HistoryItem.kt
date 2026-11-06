@@ -21,7 +21,9 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.manga.components.MangaCover
+import eu.kanade.presentation.theme.NeonSpacing
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
+import eu.kanade.presentation.theme.cardSurface
 import eu.kanade.presentation.util.formatChapterNumber
 import eu.kanade.tachiyomi.util.lang.toTimestampString
 import mihon.icons.materialsymbols.MaterialSymbols
@@ -48,9 +50,11 @@ fun HistoryItem(
 ) {
     Row(
         modifier = modifier
+            .padding(horizontal = MaterialTheme.padding.medium, vertical = NeonSpacing.xxs)
+            .cardSurface()
             .clickable(onClick = onClickResume)
             .height(HistoryItemHeight)
-            .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small),
+            .padding(horizontal = NeonSpacing.sm, vertical = NeonSpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MangaCover.Book(

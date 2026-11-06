@@ -88,11 +88,10 @@ internal class SpreadPlacer(
     private val area: Size,
     private val spine: ClosedFloatingPointRange<Float>,
     private val isRightToLeft: Boolean,
+    /** Width over height of a page whose size isn't known yet. */
+    private val defaultAspect: Float,
     private val sizeOf: (ReaderPage) -> IntSize?,
 ) {
-
-    /** Width over height of a page whose size isn't known yet. */
-    private val defaultAspect = 0.7f
 
     /**
      * The rect of each item of [spread], in the viewer.

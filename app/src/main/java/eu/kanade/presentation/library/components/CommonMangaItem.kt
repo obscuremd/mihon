@@ -47,8 +47,8 @@ import tachiyomi.presentation.core.util.selectedBackground
 import tachiyomi.domain.manga.model.MangaCover as MangaCoverModel
 
 object CommonMangaItemDefaults {
-    val GridHorizontalSpacer = 8.dp
-    val GridVerticalSpacer = 10.dp
+    val GridHorizontalSpacer = 14.dp
+    val GridVerticalSpacer = 22.dp
 
     @Suppress("ConstPropertyName")
     const val BrowseFavoriteCoverAlpha = 0.34f
@@ -187,6 +187,7 @@ fun MangaComfortableGridItem(
     coverBadgeStart: (@Composable RowScope.() -> Unit)? = null,
     coverBadgeEnd: (@Composable RowScope.() -> Unit)? = null,
     onClickContinueReading: (() -> Unit)? = null,
+    subtitle: String? = null,
 ) {
     GridItemSelectable(
         isSelected = isSelected,
@@ -226,6 +227,16 @@ fun MangaComfortableGridItem(
                 minLines = 2,
                 maxLines = titleMaxLines,
             )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 2.dp),
+                )
+            }
         }
     }
 }

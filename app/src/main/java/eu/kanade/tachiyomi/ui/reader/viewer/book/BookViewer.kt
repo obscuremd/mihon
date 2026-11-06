@@ -2,7 +2,9 @@ package eu.kanade.tachiyomi.ui.reader.viewer.book
 
 import android.content.Context
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -21,6 +23,8 @@ import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.PagerItems
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.PagerPageTracker
 import eu.kanade.tachiyomi.util.system.createReaderThemeContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.BufferOverflow
@@ -28,7 +32,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import mihon.app.di.appGraph
-import kotlin.math.abs
 import kotlin.math.min
 
 /**
@@ -98,6 +101,12 @@ class BookViewer(val activity: ReaderActivity, val isRightToLeft: Boolean) : Vie
 
     /** Whether [turn] was started going forward, which a release then favors. */
     private var turningForward = true
+
+    /** Where the running turn animation is headed, 0 or 1. */
+    private var turnTarget = 1f
+
+    /** The running turn animation, which a new turn cuts short. */
+    private var animationJob: Job? = null
 
     /** Whether a button on a page is held, which turns no pages. */
     internal var buttonPressed by mutableStateOf(false)
@@ -184,32 +193,37 @@ class BookViewer(val activity: ReaderActivity, val isRightToLeft: Boolean) : Vie
     }
 
     /**
-     * Plays a whole turn, as for a tap or a key.
+     * Plays a whole turn in [scope], as for a tap or a key. A turn still playing ends first, so quick taps each turn a
+     * page rather than waiting on one another.
      */
-    internal suspend fun playTurn(forward: Boolean) {
-        if (turn != null || buttonPressed) return
+    internal fun playTurn(scope: CoroutineScope, forward: Boolean) {
+        if (buttonPressed) return
+        settleNow()
         val next = turnFrom(forward) ?: return
         if (!general.usePageTransitions) {
             showSpread(if (forward) next.to else next.from)
             return
         }
         beginTurn(next, forward, top = false)
-        animate(
-            initialValue = progress,
-            targetValue = if (forward) 1f else 0f,
-            animationSpec = tween(TURN_MILLIS, easing = FastOutSlowInEasing),
-        ) { value, _ ->
-            progress = value
+        turnTarget = if (forward) 1f else 0f
+        animationJob = scope.launch {
+            animate(
+                initialValue = progress,
+                targetValue = turnTarget,
+                animationSpec = tween(TURN_MILLIS, easing = FastOutSlowInEasing),
+            ) { value, _ ->
+                progress = value
+            }
+            finishTurn()
         }
-        finishTurn()
     }
 
     /**
-     * Lets go of the leaf: it falls to whichever side it's headed, given how far over it is and how fast it was
-     * flicked, in turns per second. A leaf pulled a little way over finishes its turn, as one does reading, and so
-     * does one the finger moved [travel] across a good part of the screen, as a leaf as wide as the screen needs.
+     * Lets go of the leaf in [scope]: it falls to whichever side it's headed, given how far over it is and how fast it
+     * was flicked, in turns per second, and carries the flick's momentum. A leaf pulled a little way over finishes its
+     * turn, as one does reading, and so does one the finger moved [travel] across a good part of the screen.
      */
-    internal suspend fun releaseTurn(velocity: Float, travel: Float = 0f) {
+    internal fun releaseTurn(scope: CoroutineScope, velocity: Float, travel: Float = 0f) {
         if (turn == null) return
         val pulled = if (turningForward) progress else 1f - progress
         val completes = when {
@@ -217,18 +231,32 @@ class BookViewer(val activity: ReaderActivity, val isRightToLeft: Boolean) : Vie
             velocity < -FLING_VELOCITY -> !turningForward
             else -> pulled > TURN_THRESHOLD || travel > TRAVEL_THRESHOLD
         }
-        val target = if (completes == turningForward) 1f else 0f
-        val duration = (SETTLE_MIN_MILLIS + (TURN_MILLIS - SETTLE_MIN_MILLIS) * abs(target - progress)).toInt()
-        coroutineScope {
-            launch {
-                animate(progress, target, animationSpec = tween(duration, easing = FastOutSlowInEasing)) { value, _ ->
-                    progress = value
+        turnTarget = if (completes == turningForward) 1f else 0f
+        // Critically damped, so the leaf lands without bouncing past the spine
+        val settle = spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = SETTLE_STIFFNESS)
+        animationJob = scope.launch {
+            coroutineScope {
+                launch {
+                    animate(progress, turnTarget, velocity.coerceIn(-MAX_FLING, MAX_FLING), settle) { value, _ ->
+                        progress = value.coerceIn(0f, 1f)
+                    }
+                }
+                launch {
+                    animate(cornerDy, 0f, animationSpec = settle) { value, _ -> cornerDy = value }
                 }
             }
-            launch {
-                animate(cornerDy, 0f, animationSpec = tween(duration)) { value, _ -> cornerDy = value }
-            }
+            finishTurn()
         }
+    }
+
+    /**
+     * Ends a turn still playing at once, where it was headed. Does nothing without one.
+     */
+    internal fun settleNow() {
+        if (turn == null) return
+        animationJob?.cancel()
+        animationJob = null
+        progress = turnTarget
         finishTurn()
     }
 
@@ -262,8 +290,13 @@ internal data class Turn(val from: Int, val to: Int)
 /** Width over height above which a page is a printed spread, shown alone across both sides. */
 private const val WIDE_PAGE_RATIO = 1.05f
 
-private const val TURN_MILLIS = 560
-private const val SETTLE_MIN_MILLIS = 140
+private const val TURN_MILLIS = 460
+
+/** How briskly a let-go leaf settles. */
+private const val SETTLE_STIFFNESS = 380f
+
+/** The fastest flick, in turns per second, a let-go leaf carries on with. */
+private const val MAX_FLING = 8f
 
 /** How far over a leaf has to be pulled for letting go to finish the turn. */
 private const val TURN_THRESHOLD = 0.3f

@@ -114,4 +114,8 @@
         <item quantity="one">%1$d update failed</item>
         <item quantity="other">%1$d updates failed</item>
     </plurals>
+    <plurals name="reading_mode_rule_overridden">
+        <item quantity="one">%d series a rule is for has its own reading mode, so the rule doesn\'t change it</item>
+        <item quantity="other">%d series rules are for have their own reading modes, so the rules don\'t change them</item>
+    </plurals>
 </resources>

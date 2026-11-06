@@ -2,6 +2,8 @@ package eu.kanade.tachiyomi.ui.reader.viewer.book
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -16,6 +18,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat
@@ -35,11 +39,31 @@ internal class BookImages(private val scope: CoroutineScope) {
 
     private val jobs = HashMap<ReaderPage, Job>()
 
+    /** Decoded pages, least recently wanted first, so the ones turned away from longest go first. */
+    private val recent = LinkedHashSet<ReaderPage>()
+
+    /** Big pages decode a couple at a time, so turning fast doesn't pile them up in memory. */
+    private val decodes = Semaphore(PARALLEL_DECODES)
+
     /** The viewer's size, which no page is decoded much larger than. */
     var viewport = IntSize(1080, 1920)
 
     /**
-     * Loads [pages] and lets go of the others.
+     * Width over height of most pages seen so far, for pages whose size isn't known yet, so they don't change shape
+     * when they load.
+     */
+    val typicalAspect: Float by derivedStateOf {
+        val aspects = sizes.values
+            .filter { it.width > 0 && it.height > 0 }
+            .map { it.width.toFloat() / it.height }
+            .filter { it < 1f }
+            .sorted()
+        aspects.getOrNull(aspects.size / 2) ?: DEFAULT_ASPECT
+    }
+
+    /**
+     * Loads [pages]. Others stop loading, and the decoded ones turned away from longest are let go once there are
+     * more than a few, so turning back shows them at once.
      */
     fun keep(pages: Set<ReaderPage>) {
         val iterator = jobs.entries.iterator()
@@ -48,9 +72,17 @@ internal class BookImages(private val scope: CoroutineScope) {
             if (page !in pages) {
                 job.cancel()
                 iterator.remove()
-                bitmaps.remove(page)
                 errors.remove(page)
             }
+        }
+        pages.forEach {
+            recent.remove(it)
+            recent.add(it)
+        }
+        while (recent.size > MAX_DECODED) {
+            val oldest = recent.firstOrNull { it !in pages } ?: break
+            recent.remove(oldest)
+            bitmaps.remove(oldest)
         }
         for (page in pages) {
             if (page !in jobs) jobs[page] = scope.launch { load(page) }
@@ -60,6 +92,7 @@ internal class BookImages(private val scope: CoroutineScope) {
     fun clear() {
         jobs.values.forEach(Job::cancel)
         jobs.clear()
+        recent.clear()
         bitmaps.clear()
         errors.clear()
     }
@@ -72,7 +105,8 @@ internal class BookImages(private val scope: CoroutineScope) {
         supervisorScope {
             launch(Dispatchers.IO) { loader.loadPage(page) }
             page.statusFlow.collectLatest { state ->
-                if (state == Page.State.Ready) decode(page)
+                // Kept from before: nothing to decode again
+                if (state == Page.State.Ready && page !in bitmaps) decode(page)
             }
         }
     }
@@ -81,7 +115,9 @@ internal class BookImages(private val scope: CoroutineScope) {
         val stream = page.stream ?: return
         val viewport = viewport
         try {
-            val (bitmap, size) = withContext(Dispatchers.IO) { decodePage(stream, viewport) }
+            val (bitmap, size) = decodes.withPermit {
+                withContext(Dispatchers.IO) { decodePage(stream, viewport) }
+            }
             bitmap.prepareToDraw()
             sizes[page] = size
             bitmaps[page] = bitmap.asImageBitmap()
@@ -131,3 +167,11 @@ private fun sampleSize(width: Int, height: Int, viewport: IntSize): Int {
 }
 
 private const val MAX_BITMAP_SIDE = 4096
+
+/** Width over height of a page before any page's size is known. */
+private const val DEFAULT_ASPECT = 0.7f
+
+/** Decoded pages kept at most, including the ones loading ahead. */
+private const val MAX_DECODED = 16
+
+private const val PARALLEL_DECODES = 2

@@ -29,7 +29,9 @@ import dev.icerock.moko.resources.StringResource
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.more.settings.screen.about.AboutScreen
+import eu.kanade.presentation.more.settings.widget.SettingsCardGroup
 import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
+import eu.kanade.presentation.more.settings.widget.settingsIconTint
 import eu.kanade.presentation.util.LocalBackPress
 import eu.kanade.presentation.util.Screen
 import mihon.icons.materialsymbols.MaterialSymbols
@@ -121,6 +123,25 @@ object SettingsMainScreen : Screen() {
                     state = state,
                     contentPadding = contentPadding,
                 ) {
+                    if (!twoPane) {
+                        // One pane: grouped cards, each icon on its own tint
+                        groups.forEach { (titleRes, range) ->
+                            item(key = titleRes.resourceId) {
+                                SettingsCardGroup(title = stringResource(titleRes)) {
+                                    items.slice(range).forEachIndexed { i, item ->
+                                        TextPreferenceWidget(
+                                            title = stringResource(item.titleRes),
+                                            subtitle = item.formatSubtitle(),
+                                            icon = item.icon,
+                                            iconTint = settingsIconTint(range.first + i),
+                                            onPreferenceClick = { navigator.navigate(item.screen, false) },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        return@LazyColumn
+                    }
                     itemsIndexed(
                         items = items,
                         key = { _, item -> item.hashCode() },
@@ -168,6 +189,13 @@ object SettingsMainScreen : Screen() {
         val formatSubtitle: @Composable () -> String? = { subtitleRes?.let { stringResource(it) } },
         val icon: ImageVector,
         val screen: VoyagerScreen,
+    )
+
+    /** Which of [items] go on which card. */
+    private val groups = listOf(
+        MR.strings.settings_group_reading to 0..3,
+        MR.strings.settings_group_sources to 4..6,
+        MR.strings.settings_group_app to 7..9,
     )
 
     private val items = listOf(

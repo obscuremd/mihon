@@ -45,6 +45,7 @@ import eu.kanade.tachiyomi.ui.reader.model.ViewerChapters
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
+import eu.kanade.tachiyomi.ui.reader.setting.ReadingModeRules
 import eu.kanade.tachiyomi.util.chapter.filterDownloaded
 import eu.kanade.tachiyomi.util.chapter.removeDuplicates
 import eu.kanade.tachiyomi.util.editCover
@@ -78,6 +79,7 @@ import mihon.core.metro.AppCoroutineScope
 import mihon.data.cache.ChapterCache
 import tachiyomi.core.common.preference.toggle
 import tachiyomi.core.common.util.system.logcat
+import tachiyomi.domain.category.interactor.GetCategories
 import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
 import tachiyomi.domain.chapter.interactor.UpdateChapter
 import tachiyomi.domain.chapter.model.Chapter
@@ -115,6 +117,7 @@ class ReaderViewModel(
     private val trackPreferences: TrackPreferences,
     private val trackChapter: TrackChapter,
     private val getManga: GetManga,
+    private val getCategories: GetCategories,
     private val getChaptersByMangaId: GetChaptersByMangaId,
     private val getNextChapters: GetNextChapters,
     private val upsertHistory: UpsertHistory,
@@ -346,6 +349,7 @@ class ReaderViewModel(
         withContext(Dispatchers.IO) {
             try {
                 val manga = getManga.await(mangaId) ?: error("Requested manga of id $mangaId not found")
+                categoryIds = getCategories.await(mangaId).mapTo(HashSet()) { it.id }
                 val source = sourceManager.getOrStub(manga.source)
                 incognitoMode = getIncognitoState.await(manga.source)
                 mutableState.update { it.copy(manga = manga, source = source) }
@@ -818,9 +822,20 @@ class ReaderViewModel(
         val default = readerPreferences.defaultReadingMode.get()
         val readingMode = ReadingMode.fromPreference(manga?.readingMode?.toInt())
         return when {
-            resolveDefault && readingMode == ReadingMode.DEFAULT -> default
+            // The series' own mode, then the first tag rule it matches, then the default
+            resolveDefault && readingMode == ReadingMode.DEFAULT -> tagRuleReadingMode()?.flagValue ?: default
             else -> manga?.readingMode?.toInt() ?: default
         }
+    }
+
+    /** The library categories the open series is in, which reading mode rules can be for. */
+    @Volatile
+    private var categoryIds: Set<Long> = emptySet()
+
+    private fun tagRuleReadingMode(): ReadingMode? {
+        val rules = ReadingModeRules.parse(readerPreferences.readingModeRules.get())
+        if (rules.isEmpty()) return null
+        return ReadingModeRules.match(rules, manga?.genre, categoryIds)
     }
 
     private var readingModeJob: Job? = null

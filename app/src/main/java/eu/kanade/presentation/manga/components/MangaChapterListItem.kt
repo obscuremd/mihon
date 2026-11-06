@@ -26,6 +26,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import eu.kanade.presentation.theme.NeonSpacing
+import eu.kanade.presentation.theme.cardSurface
 import eu.kanade.tachiyomi.data.download.model.Download
 import me.saket.swipe.SwipeableActionsBox
 import mihon.icons.materialsymbols.MaterialSymbols
@@ -91,12 +93,14 @@ fun MangaChapterListItem(
     ) {
         Row(
             modifier = modifier
+                .padding(horizontal = NeonSpacing.gutter, vertical = NeonSpacing.xxs)
+                .cardSurface()
                 .selectedBackground(selected)
                 .combinedClickable(
                     onClick = onClick,
                     onLongClick = onLongClick,
                 )
-                .padding(start = 16.dp, top = 12.dp, end = 8.dp, bottom = 12.dp),
+                .padding(start = NeonSpacing.md, top = 14.dp, end = NeonSpacing.xs, bottom = 14.dp),
         ) {
             Column(
                 modifier = Modifier.weight(1f),

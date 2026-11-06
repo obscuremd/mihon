@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import eu.kanade.presentation.components.neon.NeonButton
 import eu.kanade.presentation.manga.components.MangaCover
 import eu.kanade.presentation.theme.NeonDefaults
 import eu.kanade.presentation.theme.neonGlow
@@ -267,27 +268,11 @@ private fun ContinueReadingCard(
                     modifier = Modifier.padding(top = 8.dp),
                 )
                 Spacer(Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier
-                        .clip(NeonDefaults.PillShape)
-                        .background(NeonDefaults.accentGradient)
-                        .clickable(role = Role.Button) { onClickContinueReading(item.libraryManga) }
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = MaterialSymbols.RoundedFilled.PlayArrow,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        text = stringResource(MR.strings.action_resume),
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(start = 4.dp),
-                    )
-                }
+                NeonButton(
+                    text = stringResource(MR.strings.action_resume),
+                    icon = MaterialSymbols.RoundedFilled.PlayArrow,
+                    onClick = { onClickContinueReading(item.libraryManga) },
+                )
             }
         }
     }

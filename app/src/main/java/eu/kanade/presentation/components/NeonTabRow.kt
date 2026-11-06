@@ -32,13 +32,16 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.theme.NeonDefaults
+import eu.kanade.presentation.theme.NeonSpacing
 import eu.kanade.presentation.theme.neonOutline
 
 /**
@@ -64,7 +67,9 @@ fun NeonTabRow(
     val indicatorSpring = spring<Float>(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)
     val indicatorLeft by animateFloatAsState(target?.first ?: 0f, indicatorSpring, label = "indicatorLeft")
     val indicatorWidth by animateFloatAsState(target?.second ?: 0f, indicatorSpring, label = "indicatorWidth")
-    val gradient = NeonDefaults.accentGradient
+    val stroke = NeonDefaults.accentStroke
+    val tint = MaterialTheme.colorScheme.primary.copy(alpha = NeonDefaults.TINT_SELECTED_ALPHA)
+    val strokeWidth = with(LocalDensity.current) { 1.5.dp.toPx() }
     val scrollState = rememberScrollState()
     var viewportWidth by remember { mutableIntStateOf(0) }
 
@@ -77,12 +82,12 @@ fun NeonTabRow(
 
     Box(
         modifier = modifier
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(horizontal = NeonSpacing.gutter, vertical = NeonSpacing.xs)
             .fillMaxWidth()
-            .height(44.dp)
+            .height(46.dp)
             .clip(NeonDefaults.PillShape)
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .neonOutline(NeonDefaults.PillShape, NeonDefaults.outlineColor)
+            .neonOutline(NeonDefaults.PillShape, NeonDefaults.hairline)
             .onSizeChanged { viewportWidth = it.width },
     ) {
         Row(
@@ -92,11 +97,20 @@ fun NeonTabRow(
                 .fillMaxHeight()
                 .drawBehind {
                     if (target != null && indicatorWidth > 0f) {
+                        // The selected tab: the accent's tint inside its neon stroke
+                        val radius = CornerRadius(size.height / 2f)
                         drawRoundRect(
-                            brush = gradient,
+                            color = tint,
                             topLeft = Offset(indicatorLeft, 0f),
                             size = Size(indicatorWidth, size.height),
-                            cornerRadius = CornerRadius(size.height / 2f),
+                            cornerRadius = radius,
+                        )
+                        drawRoundRect(
+                            brush = stroke,
+                            topLeft = Offset(indicatorLeft + strokeWidth / 2, strokeWidth / 2),
+                            size = Size(indicatorWidth - strokeWidth, size.height - strokeWidth),
+                            cornerRadius = radius,
+                            style = Stroke(width = strokeWidth),
                         )
                     }
                 }
@@ -117,9 +131,9 @@ fun NeonTabRow(
                 ) {
                     CompositionLocalProvider(
                         LocalContentColor provides if (selected) {
-                            MaterialTheme.colorScheme.onPrimary
+                            MaterialTheme.colorScheme.primary
                         } else {
-                            MaterialTheme.colorScheme.onSurface
+                            MaterialTheme.colorScheme.onSurfaceVariant
                         },
                         LocalTextStyle provides MaterialTheme.typography.titleSmall.copy(
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,

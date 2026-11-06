@@ -162,6 +162,9 @@ class ReaderPreferences(
 
     val bookPageShadows: Preference<Boolean> = preferenceStore.getBoolean("pref_book_page_shadows", true)
 
+    /** [ReadingModeRules], one "tag<TAB>reading mode" per line. */
+    val readingModeRules: Preference<String> = preferenceStore.getString("pref_reading_mode_rules", "")
+
     // endregion
 
     // region Color filter

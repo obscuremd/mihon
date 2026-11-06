@@ -70,7 +70,6 @@ import eu.kanade.tachiyomi.ui.reader.viewer.transitionDownloadState
 import eu.kanade.tachiyomi.util.system.readerBackgroundColor
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.launch
 import tachiyomi.presentation.core.components.CombinedCircularProgressIndicator
 import tachiyomi.presentation.core.util.collectAsState
 import kotlin.math.abs
@@ -87,12 +86,11 @@ internal fun BookContent(viewer: BookViewer, modifier: Modifier) {
     val hinges = currentWindowAdaptiveInfoV2().windowPosture.hingeList
     var windowOffset by remember { mutableStateOf(Offset.Zero) }
     val scope = rememberCoroutineScope()
-    val paints = remember { CurlPaints() }
     val layers = remember { mutableStateMapOf<Any, GraphicsLayer>() }
     val zoom = remember { BookZoom() }
 
     LaunchedEffect(viewer) {
-        for (forward in viewer.turnRequests) viewer.playTurn(forward)
+        for (forward in viewer.turnRequests) viewer.playTurn(this, forward)
     }
     LaunchedEffect(viewer) {
         snapshotFlow { viewer.spreads.getOrNull(viewer.currentIndex) }
@@ -136,13 +134,14 @@ internal fun BookContent(viewer: BookViewer, modifier: Modifier) {
             viewer.images.viewport = IntSize(constraints.maxWidth, constraints.maxHeight)
         }
 
-        val placer = SpreadPlacer(area, spine, viewer.isRightToLeft) { viewer.images.sizes[it] }
+        val typicalAspect = viewer.images.typicalAspect
+        val placer = SpreadPlacer(area, spine, viewer.isRightToLeft, typicalAspect) { viewer.images.sizes[it] }
         val spreads = viewer.spreads
         val index = viewer.currentIndex
         val turn = viewer.turn
 
         LaunchedEffect(index, spreads) {
-            val pages = (index - 2..index + 3)
+            val pages = (index - PRELOAD_BEHIND..index + PRELOAD_AHEAD)
                 .flatMap { spreads.getOrNull(it)?.items.orEmpty() }
                 .filterIsInstance<ReaderPage>()
                 .toSet()
@@ -182,10 +181,6 @@ internal fun BookContent(viewer: BookViewer, modifier: Modifier) {
                                 )
                             }
                         },
-                        onDoubleTap = { position ->
-                            if (viewer.turn != null || viewer.buttonPressed) return@detectTapGestures
-                            if (zoom.isZoomed) zoom.reset() else zoom.zoomAround(position, DOUBLE_TAP_ZOOM, currentArea)
-                        },
                         onLongPress = { position ->
                             val contentPosition = zoom.toContent(position, currentArea)
                             val shown = viewer.spreads.getOrNull(viewer.currentIndex)?.items.orEmpty()
@@ -203,7 +198,9 @@ internal fun BookContent(viewer: BookViewer, modifier: Modifier) {
                 .pointerInput(viewer) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
-                        if (viewer.turn != null || viewer.buttonPressed) return@awaitEachGesture
+                        if (viewer.buttonPressed) return@awaitEachGesture
+                        // Grabbing the page while a turn plays lets that turn land, so the next can start
+                        viewer.settleNow()
                         val velocity = VelocityTracker()
                         velocity.addPosition(down.uptimeMillis, down.position)
                         var mode = DragMode.Undecided
@@ -279,11 +276,11 @@ internal fun BookContent(viewer: BookViewer, modifier: Modifier) {
                                 val towardTurn = if (dragForward) -direction * movedX else direction * movedX
                                 val travel = towardTurn / currentArea.width
                                 released = true
-                                scope.launch { viewer.releaseTurn(turnsPerSecond, travel) }
+                                viewer.releaseTurn(scope, turnsPerSecond, travel)
                             }
                         } finally {
                             // The gesture was cut short: let the leaf fall rather than leave it hanging.
-                            if (mode == DragMode.Turn && !released) scope.launch { viewer.releaseTurn(0f) }
+                            if (mode == DragMode.Turn && !released) viewer.releaseTurn(scope, 0f)
                         }
                     }
                 },
@@ -328,7 +325,14 @@ internal fun BookContent(viewer: BookViewer, modifier: Modifier) {
                                 layers = layers,
                             ) ?: return@drawBehind
                             val corner = cornerPosition(scene.leaf, viewer.progress, viewer.cornerDy, viewer.fromTop)
-                            drawTurn(scene, corner, viewer.fromTop, viewer.progress, PaperColor, shadows, paints)
+                            drawTurn(
+                                scene,
+                                corner,
+                                viewer.fromTop,
+                                viewer.progress.coerceIn(0f, 1f),
+                                PaperColor,
+                                shadows,
+                            )
                         },
                 )
             }
@@ -563,7 +567,9 @@ private val PaperColor = Color(0xFFF4F2ED)
 /** Where pages kept ready for a turn are laid out, well clear of the screen. */
 private const val OFFSCREEN_X = 100_000
 
-private const val DOUBLE_TAP_ZOOM = 2f
+/** Spreads before and after the one shown whose pages load ahead. */
+private const val PRELOAD_BEHIND = 2
+private const val PRELOAD_AHEAD = 4
 private const val MAX_ZOOM = 5f
 
 /** How much of the finger's vertical movement the turned corner follows. */

@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import tachiyomi.presentation.core.components.material.padding
 
 @Composable
@@ -13,15 +14,19 @@ fun ListGroupHeader(
     text: String,
     modifier: Modifier = Modifier,
 ) {
+    // The Neon group label: caps in the accent, with room above (docs/design-system.md)
     Text(
-        text = text,
+        text = text.uppercase(),
         modifier = modifier
             .padding(
-                horizontal = MaterialTheme.padding.medium,
-                vertical = MaterialTheme.padding.small,
+                start = MaterialTheme.padding.medium,
+                end = MaterialTheme.padding.medium,
+                top = MaterialTheme.padding.medium,
+                bottom = MaterialTheme.padding.small,
             ),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontWeight = FontWeight.SemiBold,
-        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.5.sp,
+        style = MaterialTheme.typography.labelLarge,
     )
 }

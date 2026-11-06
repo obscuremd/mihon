@@ -7,6 +7,7 @@ import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,6 +72,13 @@ import com.mikepenz.markdown.model.markdownAnnotator
 import com.mikepenz.markdown.model.markdownAnnotatorConfig
 import com.mikepenz.markdown.utils.getUnescapedTextInNode
 import eu.kanade.presentation.components.DropdownMenu
+import eu.kanade.presentation.components.neon.NeonChip
+import eu.kanade.presentation.theme.NeonDefaults
+import eu.kanade.presentation.theme.NeonSpacing
+import eu.kanade.presentation.theme.cardSurface
+import eu.kanade.presentation.theme.neonGlow
+import eu.kanade.presentation.theme.neonOutline
+import eu.kanade.presentation.theme.neonSurface
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.getNameForMangaInfo
@@ -79,6 +87,8 @@ import eu.kanade.tachiyomi.util.system.copyToClipboard
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import mihon.app.di.appGraph
+import mihon.feature.home.Genres
+import mihon.feature.home.components.genreAccent
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.AttachMoney
 import mihon.icons.materialsymbols.rounded.Block
@@ -125,7 +135,8 @@ fun MangaInfoBox(
     Box(modifier = modifier) {
         // Backdrop
         val backdropGradientColors = listOf(
-            Color.Transparent,
+            MaterialTheme.colorScheme.background.copy(alpha = 0.15f),
+            MaterialTheme.colorScheme.background.copy(alpha = 0.55f),
             MaterialTheme.colorScheme.background,
         )
         AsyncImage(
@@ -143,8 +154,8 @@ fun MangaInfoBox(
                         brush = Brush.verticalGradient(colors = backdropGradientColors),
                     )
                 }
-                .blur(4.dp)
-                .alpha(0.2f),
+                .blur(20.dp)
+                .alpha(0.55f),
         )
 
         // Manga & source info
@@ -186,7 +197,7 @@ fun MangaActionRow(
     onEditCategory: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val defaultActionButtonColor = MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_ALPHA)
+    val defaultActionButtonColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     // TODO: show something better when using custom interval
     val nextUpdateDays = remember(nextUpdate) {
@@ -198,7 +209,10 @@ fun MangaActionRow(
         }
     }
 
-    Row(modifier = modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp)) {
+    Row(
+        modifier = modifier.padding(start = NeonSpacing.gutter, top = NeonSpacing.md, end = NeonSpacing.gutter),
+        horizontalArrangement = Arrangement.spacedBy(NeonSpacing.sm),
+    ) {
         MangaActionButton(
             title = if (favorite) {
                 stringResource(MR.strings.in_library)
@@ -264,22 +278,29 @@ fun ExpandableMangaDescription(
         val desc =
             description.takeIf { !it.isNullOrBlank() } ?: stringResource(MR.strings.description_placeholder)
 
+        Text(
+            text = stringResource(MR.strings.details_synopsis),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = NeonSpacing.gutter, top = NeonSpacing.xl, end = NeonSpacing.gutter),
+        )
         MangaSummary(
             description = desc,
             expanded = expanded,
             notes = notes,
             onEditNotesClicked = onEditNotes,
             modifier = Modifier
-                .padding(top = 8.dp)
-                .padding(horizontal = 16.dp)
-                .clickableNoIndication { onExpanded(!expanded) },
+                .padding(top = NeonSpacing.sm)
+                .padding(horizontal = NeonSpacing.gutter)
+                .cardSurface()
+                .clickableNoIndication { onExpanded(!expanded) }
+                .padding(NeonSpacing.md),
         )
         val tags = tagsProvider()
         if (!tags.isNullOrEmpty()) {
             Box(
                 modifier = Modifier
-                    .padding(top = 8.dp)
-                    .padding(vertical = 12.dp)
+                    .padding(top = NeonSpacing.xs)
+                    .padding(vertical = NeonSpacing.sm)
                     .animateContentSize(animationSpec = spring())
                     .fillMaxWidth(),
             ) {
@@ -306,8 +327,8 @@ fun ExpandableMangaDescription(
                 }
                 if (expanded) {
                     FlowRow(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.extraSmall),
+                        modifier = Modifier.padding(horizontal = NeonSpacing.gutter),
+                        horizontalArrangement = Arrangement.spacedBy(NeonSpacing.xs),
                     ) {
                         tags.forEach {
                             TagsChip(
@@ -322,8 +343,8 @@ fun ExpandableMangaDescription(
                     }
                 } else {
                     LazyRow(
-                        contentPadding = PaddingValues(horizontal = MaterialTheme.padding.medium),
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.extraSmall),
+                        contentPadding = PaddingValues(horizontal = NeonSpacing.gutter),
+                        horizontalArrangement = Arrangement.spacedBy(NeonSpacing.xs),
                     ) {
                         items(items = tags) {
                             TagsChip(
@@ -354,11 +375,15 @@ private fun MangaAndSourceTitlesLarge(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, top = appBarPadding + 16.dp, end = 16.dp),
+            .padding(start = NeonSpacing.gutter, top = appBarPadding + NeonSpacing.gutter, end = NeonSpacing.gutter),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         MangaCover.Book(
-            modifier = Modifier.fillMaxWidth(0.65f),
+            modifier = Modifier
+                .fillMaxWidth(0.65f)
+                .neonGlow(NeonDefaults.CoverShape, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f), 12.dp)
+                .neonOutline(NeonDefaults.CoverShape, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+            shape = NeonDefaults.CoverShape,
             data = ImageRequest.Builder(LocalContext.current)
                 .data(manga)
                 .crossfade(true)
@@ -392,14 +417,17 @@ private fun MangaAndSourceTitlesSmall(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, top = appBarPadding + 16.dp, end = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(start = NeonSpacing.gutter, top = appBarPadding + NeonSpacing.gutter, end = NeonSpacing.gutter),
+        horizontalArrangement = Arrangement.spacedBy(NeonSpacing.gutter),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MangaCover.Book(
             modifier = Modifier
-                .sizeIn(maxWidth = 100.dp)
-                .align(Alignment.Top),
+                .sizeIn(maxWidth = 120.dp)
+                .align(Alignment.Top)
+                .neonGlow(NeonDefaults.CoverShape, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f), 12.dp)
+                .neonOutline(NeonDefaults.CoverShape, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+            shape = NeonDefaults.CoverShape,
             data = ImageRequest.Builder(LocalContext.current)
                 .data(manga)
                 .crossfade(true)
@@ -437,7 +465,7 @@ private fun ColumnScope.MangaContentInfo(
     val context = LocalContext.current
     Text(
         text = title.ifBlank { stringResource(MR.strings.unknown_title) },
-        style = MaterialTheme.typography.titleLarge,
+        style = MaterialTheme.typography.headlineSmall,
         modifier = Modifier.clickableNoIndication(
             onLongClick = {
                 if (title.isNotBlank()) {
@@ -508,61 +536,43 @@ private fun ColumnScope.MangaContentInfo(
         }
     }
 
-    Spacer(modifier = Modifier.height(2.dp))
+    Spacer(modifier = Modifier.height(NeonSpacing.sm))
 
-    Row(
-        modifier = Modifier.secondaryItemAlpha(),
-        verticalAlignment = Alignment.CenterVertically,
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(NeonSpacing.xs),
+        verticalArrangement = Arrangement.spacedBy(NeonSpacing.xs),
     ) {
-        Icon(
-            imageVector = when (status) {
-                SManga.ONGOING.toLong() -> MaterialSymbols.Rounded.Schedule
-                SManga.COMPLETED.toLong() -> MaterialSymbols.Rounded.DoneAll
-                SManga.LICENSED.toLong() -> MaterialSymbols.Rounded.AttachMoney
-                SManga.PUBLISHING_FINISHED.toLong() -> MaterialSymbols.Rounded.Check
-                SManga.CANCELLED.toLong() -> MaterialSymbols.Rounded.Close
-                SManga.ON_HIATUS.toLong() -> MaterialSymbols.RoundedFilled.Pause
-                else -> MaterialSymbols.Rounded.Block
-            },
-            contentDescription = null,
-            modifier = Modifier
-                .padding(end = 4.dp)
-                .size(16.dp),
-        )
-        ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-            Text(
-                text = when (status) {
-                    SManga.ONGOING.toLong() -> stringResource(MR.strings.ongoing)
-                    SManga.COMPLETED.toLong() -> stringResource(MR.strings.completed)
-                    SManga.LICENSED.toLong() -> stringResource(MR.strings.licensed)
-                    SManga.PUBLISHING_FINISHED.toLong() -> stringResource(MR.strings.publishing_finished)
-                    SManga.CANCELLED.toLong() -> stringResource(MR.strings.cancelled)
-                    SManga.ON_HIATUS.toLong() -> stringResource(MR.strings.on_hiatus)
-                    else -> stringResource(MR.strings.unknown)
-                },
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 1,
-            )
-            DotSeparatorText()
-            if (isStubSource) {
-                Icon(
-                    imageVector = MaterialSymbols.RoundedFilled.Warning,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(end = 4.dp)
-                        .size(16.dp),
-                    tint = MaterialTheme.colorScheme.error,
-                )
-            }
-            Text(
-                text = source.getNameForMangaInfo(),
-                modifier = Modifier.clickableNoIndication {
-                    doSearch(source.query(), false)
-                },
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 1,
-            )
+        val statusIcon = when (status) {
+            SManga.ONGOING.toLong() -> MaterialSymbols.Rounded.Schedule
+            SManga.COMPLETED.toLong() -> MaterialSymbols.Rounded.DoneAll
+            SManga.LICENSED.toLong() -> MaterialSymbols.Rounded.AttachMoney
+            SManga.PUBLISHING_FINISHED.toLong() -> MaterialSymbols.Rounded.Check
+            SManga.CANCELLED.toLong() -> MaterialSymbols.Rounded.Close
+            SManga.ON_HIATUS.toLong() -> MaterialSymbols.RoundedFilled.Pause
+            else -> MaterialSymbols.Rounded.Block
         }
+        NeonChip(
+            text = when (status) {
+                SManga.ONGOING.toLong() -> stringResource(MR.strings.ongoing)
+                SManga.COMPLETED.toLong() -> stringResource(MR.strings.completed)
+                SManga.LICENSED.toLong() -> stringResource(MR.strings.licensed)
+                SManga.PUBLISHING_FINISHED.toLong() -> stringResource(MR.strings.publishing_finished)
+                SManga.CANCELLED.toLong() -> stringResource(MR.strings.cancelled)
+                SManga.ON_HIATUS.toLong() -> stringResource(MR.strings.on_hiatus)
+                else -> stringResource(MR.strings.unknown)
+            },
+            leading = { Icon(statusIcon, contentDescription = null, modifier = Modifier.size(16.dp)) },
+        )
+        NeonChip(
+            text = source.getNameForMangaInfo(),
+            accent = if (isStubSource) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary,
+            onClick = { doSearch(source.query(), false) },
+            leading = if (isStubSource) {
+                { Icon(MaterialSymbols.RoundedFilled.Warning, contentDescription = null, Modifier.size(16.dp)) }
+            } else {
+                null
+            },
+        )
     }
 }
 
@@ -662,7 +672,7 @@ private fun MangaSummary(
                 }
             },
             {
-                val colors = listOf(Color.Transparent, MaterialTheme.colorScheme.background)
+                val colors = listOf(Color.Transparent, MaterialTheme.colorScheme.surfaceContainerLow)
                 Box(
                     modifier = Modifier.background(Brush.verticalGradient(colors = colors)),
                     contentAlignment = Alignment.Center,
@@ -703,19 +713,18 @@ private fun MangaSummary(
 
 private val DefaultTagChipModifier = Modifier.padding(vertical = 4.dp)
 
+/** The accent of a tag: its genre's hue when it's a genre, the theme's accent otherwise. */
+@Composable
+private fun tagAccent(tag: String): Color =
+    Genres.normalize(tag)?.let { genreAccent(it) } ?: MaterialTheme.colorScheme.primary
+
 @Composable
 private fun TagsChip(
     text: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
-        SuggestionChip(
-            modifier = modifier,
-            onClick = onClick,
-            label = { Text(text = text, style = MaterialTheme.typography.bodySmall) },
-        )
-    }
+    NeonChip(text = text, accent = tagAccent(text), onClick = onClick, modifier = modifier)
 }
 
 @Composable
@@ -726,25 +735,35 @@ private fun RowScope.MangaActionButton(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
 ) {
-    TextButton(
-        onClick = onClick,
-        modifier = Modifier.weight(1f),
-        onLongClick = onLongClick,
+    // An action that's on, like being in the library, takes the neon pattern
+    val active = color == MaterialTheme.colorScheme.primary
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .then(
+                if (active) {
+                    Modifier.neonSurface(NeonDefaults.CardShape)
+                } else {
+                    Modifier.cardSurface(NeonDefaults.CardShape)
+                },
+            )
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = 4.dp, vertical = NeonSpacing.sm),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = title,
-                color = color,
-                fontSize = 12.sp,
-                textAlign = TextAlign.Center,
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = title,
+            color = color,
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
     }
 }

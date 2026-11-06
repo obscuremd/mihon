@@ -5,8 +5,13 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import eu.kanade.domain.ui.model.AppTheme
 import eu.kanade.presentation.theme.colorscheme.BaseColorScheme
 import eu.kanade.presentation.theme.colorscheme.CatppuccinColorScheme
@@ -26,6 +31,7 @@ import eu.kanade.presentation.theme.colorscheme.TokyoNightColorScheme
 import eu.kanade.presentation.theme.colorscheme.YinYangColorScheme
 import eu.kanade.presentation.theme.colorscheme.YotsubaColorScheme
 import mihon.app.di.appGraph
+import tachiyomi.presentation.core.util.collectAsState
 
 @Composable
 fun TachiyomiTheme(
@@ -35,9 +41,31 @@ fun TachiyomiTheme(
 ) {
     val context = LocalContext.current
     val uiPreferences = remember { context.appGraph.uiPreferences }
+    val displaySize by uiPreferences.displaySize.collectAsState()
     BaseTachiyomiTheme(
         appTheme = appTheme ?: uiPreferences.appTheme.get(),
         isAmoled = amoled ?: uiPreferences.themeDarkAmoled.get(),
+        content = { DisplayScale(displaySize.scale, content) },
+    )
+}
+
+/** Whether the display size is already applied, so themes nested in one another don't scale twice. */
+private val LocalDisplayScaled = staticCompositionLocalOf { false }
+
+/**
+ * [content] drawn at [scale] times the system's size, by scaling density and font scale together.
+ */
+@Composable
+private fun DisplayScale(scale: Float, content: @Composable () -> Unit) {
+    if (LocalDisplayScaled.current) {
+        content()
+        return
+    }
+    // Provided at every size, so changing it keeps the composition, and the screen the reader is on
+    val density = LocalDensity.current
+    CompositionLocalProvider(
+        LocalDensity provides Density(density.density * scale, density.fontScale * scale),
+        LocalDisplayScaled provides true,
         content = content,
     )
 }

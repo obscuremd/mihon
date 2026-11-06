@@ -14,6 +14,7 @@ import androidx.paging.compose.LazyPagingItems
 import eu.kanade.presentation.library.components.CommonMangaItemDefaults
 import eu.kanade.presentation.library.components.MangaComfortableGridItem
 import kotlinx.coroutines.flow.StateFlow
+import mihon.feature.home.components.genreLine
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.manga.model.MangaCover
 import tachiyomi.presentation.core.util.plus
@@ -63,6 +64,7 @@ private fun BrowseSourceComfortableGridItem(
 ) {
     MangaComfortableGridItem(
         title = manga.title,
+        subtitle = manga.genreLine(),
         coverData = MangaCover(
             mangaId = manga.id,
             sourceId = manga.source,

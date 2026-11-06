@@ -82,7 +82,10 @@ class BookSpreadsTest {
     @Test
     fun `facing pages meet at the spine`() {
         val pages = chapter(1, 2)
-        val placer = SpreadPlacer(Size(2000f, 1000f), 1000f..1000f, isRightToLeft = false) { IntSize(700, 1000) }
+        val placer =
+            SpreadPlacer(Size(2000f, 1000f), 1000f..1000f, isRightToLeft = false, defaultAspect = 0.7f) {
+                IntSize(700, 1000)
+            }
         val rects = placer.place(Spread.Facing(pages[0], pages[1]))
         rects.getValue(pages[0]).right shouldBe 1000f
         rects.getValue(pages[1]).left shouldBe 1000f

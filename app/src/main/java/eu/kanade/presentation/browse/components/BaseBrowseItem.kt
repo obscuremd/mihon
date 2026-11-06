@@ -8,6 +8,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import eu.kanade.presentation.theme.NeonSpacing
+import eu.kanade.presentation.theme.cardSurface
 import tachiyomi.presentation.core.components.material.padding
 
 @Composable
@@ -21,11 +23,13 @@ fun BaseBrowseItem(
 ) {
     Row(
         modifier = modifier
+            .padding(horizontal = MaterialTheme.padding.medium, vertical = NeonSpacing.xxs)
+            .cardSurface()
             .combinedClickable(
                 onClick = onClickItem,
                 onLongClick = onLongClickItem,
             )
-            .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small),
+            .padding(horizontal = NeonSpacing.md, vertical = NeonSpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         icon()

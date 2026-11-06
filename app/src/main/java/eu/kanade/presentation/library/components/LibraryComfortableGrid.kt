@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import eu.kanade.tachiyomi.ui.library.LibraryItem
+import mihon.feature.home.components.genreLine
 import tachiyomi.domain.library.model.LibraryManga
 import tachiyomi.domain.manga.model.MangaCover
 
@@ -39,6 +40,7 @@ internal fun LibraryComfortableGrid(
             MangaComfortableGridItem(
                 isSelected = manga.id in selection,
                 title = manga.title,
+                subtitle = manga.genreLine(),
                 coverData = MangaCover(
                     mangaId = manga.id,
                     sourceId = manga.source,
